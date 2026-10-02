@@ -1,189 +1,203 @@
-/* ============================================================
-   CAMPUS MARKET — admin.js (FIXED & FULLY RESTORED)
+        /* ============================================================
+   CAMPUS MARKET — data.js
+   Shared data layer. By default everything is stored in the
+   browser via localStorage, which is enough to demo the site on
+   one device but is never shared between devices or browsers.
+
+   If js/firebase-config.js has FMG_CLOUD_ENABLED set to true, this
+   file also mirrors products, businesses, users, orders and
+   feedback to a free shared Firestore database in the background,
+   so every device sees the same marketplace. See firebase-config.js
+   for the 5-minute setup. Every other file only ever calls the FMG
+   object below — none of them know or care whether the data behind
+   it is local-only or cloud-synced.
    ============================================================ */
 
-function money(n) { return "UGX " + Number(n || 0).toLocaleString("en-UG"); }
-function toast(msg) {
-  let el = document.getElementById("fmgToast");
-  if (!el) {
-    el = document.createElement("div"); el.id = "fmgToast";
-    el.style.cssText = "position:fixed;bottom:24px;left:24px;background:#14110F;color:#FBF9F6;padding:12px 18px;border-radius:4px;z-index:300;border-left:4px solid #E8A93B;font-size:0.88rem;max-width:320px;";
-    document.body.appendChild(el);
-  }
-  el.textContent = msg; el.style.opacity = "1";
-  clearTimeout(window._t); window._t = setTimeout(() => { el.style.opacity = "0"; }, 3200);
+const FMG_ADMIN = { name: "ADMIN GROUP A", password: "KU MASAKA" };
+
+const FMG_CATEGORIES = [
+  { id: "electronics", label: "Electronics", icon: "electronics" },
+  { id: "fashion", label: "Fashion", icon: "fashion" },
+  { id: "office", label: "Office", icon: "office" },
+  { id: "machinery", label: "Machinery", icon: "machinery" },
+  { id: "home", label: "Home & Living", icon: "home" },
+  { id: "agriculture", label: "Agriculture", icon: "agriculture" }
+];
+
+const FMG_LOCATIONS = [
+  { id: "masaka", label: "Masaka", lat: -0.3372, lng: 31.7345 },
+  { id: "ssembabule", label: "Ssembabule", lat: -0.0904, lng: 31.4534 },
+  { id: "kampala", label: "Kampala", lat: 0.3476, lng: 32.5825 },
+  { id: "gayaza", label: "Gayaza", lat: 0.4907, lng: 32.6167 },
+  { id: "kyotera", label: "Kyotera", lat: -0.6193, lng: 31.5253 },
+  { id: "kumasaka", label: "Kampala University Masaka", lat: -0.3406, lng: 31.7331 }
+];
+
+const FMG_FREE_TRIAL_LIMIT = 100;
+const FMG_FREE_TRIAL_MONTHS = 6;
+const FMG_MAX_DELIVERY_FEE = 10000; // UGX — hard cap a business can charge for delivery to any one point
+
+const FMG_PAYMENT_METHODS = [
+  { id: "momo", label: "MTN MoMo Pay", field: "number", fieldLabel: "MoMo phone number" },
+  { id: "airtel", label: "Airtel Pay", field: "number", fieldLabel: "Airtel phone number" },
+  { id: "mastercard", label: "Mastercard", field: "merchantId", fieldLabel: "Merchant ID" }
+];
+
+function fmgEmptyPaymentMethods() {
+  return {
+    momo: { enabled: false, number: "" },
+    airtel: { enabled: false, number: "" },
+    mastercard: { enabled: false, merchantId: "" }
+  };
 }
 
-function checkAdminGate() {
-  const session = FMG.getSession();
-  if (session && session.type === "admin") {
-    document.getElementById("adminGate").classList.add("hidden");
-    document.getElementById("adminShell").classList.remove("hidden");
-    bootAdminPanel();
-  } else {
-    document.getElementById("adminGate").classList.remove("hidden");
-    document.getElementById("adminShell").classList.add("hidden");
-  }
-}
+/* ---------- tiny local "database" helpers ---------- */
 
-function attemptAdminLogin() {
-  const name = document.getElementById("gateName").value.trim();
-  const pw = document.getElementById("gatePw").value;
-  const err = document.getElementById("gateError");
-  if (name === FMG_ADMIN.name && pw === FMG_ADMIN.password) {
-    FMG.setSession({ type: "admin" });
-    err.classList.add("hidden");
-    checkAdminGate();
-  } else {
-    err.textContent = "Incorrect admin name or password.";
-    err.classList.remove("hidden");
-  }
-}
-
-function adminLogout() { FMG.clearSession(); checkAdminGate(); }
-
-function showAdminSection(id) {
-  document.querySelectorAll(".dash-section").forEach(s => s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-  document.querySelectorAll(".dash-nav a").forEach(a => a.classList.toggle("active", a.dataset.section === id));
-  if (id === "sec-traffic") renderTrafficChart();
-  if (id === "sec-progression") { renderUserProgressionChart(); renderBizProgressionChart(); }
-}
-
-function renderAdminOverview() {
-  const users = FMG.getUsers();
-  const businesses = FMG.getBusinesses();
-  const products = FMG.getProducts();
-  const traffic = FMG.getTraffic();
-  const todayVisits = traffic.length ? traffic[traffic.length - 1].visits : 448;
-  const trialCount = fmgLoad("fmg_registered_business_count", 0);
-
-  document.getElementById("kpiUsers").textContent = users.length;
-  document.getElementById("kpiBusinesses").textContent = businesses.length;
-  document.getElementById("kpiTraffic").textContent = todayVisits + " today";
-  document.getElementById("kpiTrialSlots").textContent = Math.max(0, FMG_FREE_TRIAL_LIMIT - trialCount) + " / " + FMG_FREE_TRIAL_LIMIT + " left";
-
-  const syncEl = document.getElementById("syncStatus");
-  if (syncEl) {
-    syncEl.textContent = "Connected — shared across every device";
-    syncEl.className = "badge-chip badge-in";
+function fmgLoad(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
   }
 }
-
-function renderUsersTable() {
-  const users = FMG.getUsers();
-  const tbody = document.getElementById("usersTableBody");
-  tbody.innerHTML = users.length ? users.map(u => `
-    <tr>
-      <td>${u.name}</td><td>${u.email}</td><td>${u.joined}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Remove</button></td>
-    </tr>`).join("") : `<tr><td colspan="4">No shoppers have registered yet.</td></tr>`;
+function fmgSave(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error("Storage full or unavailable:", e);
+  }
 }
-function deleteUser(id) {
-  if (!confirm("Remove this user account?")) return;
-  FMG.saveUsers(FMG.getUsers().filter(u => u.id !== id));
-  renderUsersTable(); renderAdminOverview();
+function fmgId(prefix) {
+  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-function renderBusinessesTable() {
-  const businesses = FMG.getBusinesses();
-  const products = FMG.getProducts();
-  const tbody = document.getElementById("businessesTableBody");
+/* ---------- optional cloud sync (Firestore) ----------
+   Off by default. Turned on by setting FMG_CLOUD_ENABLED = true in
+   js/firebase-config.js, which is loaded before this file. Everything
+   here fails silently back to local-only mode if that file is missing,
+   the flag is off, or the Firebase scripts didn't load — the site
+   never breaks because of this layer. */
 
-  const displayList = [...businesses];
-  products.forEach(p => {
-    if (p.bizId && !displayList.some(b => b.id === p.bizId)) {
-      displayList.push({ id: p.bizId, name: p.nano || "Kampala Tech Shop", category: p.category, location: "kampala", joined: "2026-10-02", freeTrial: true });
+let fmgDB = null;
+let fmgCloudReady = false;
+
+function fmgNotifyUpdated(key) {
+  document.dispatchEvent(new CustomEvent("fmg:updated", { detail: { key } }));
+}
+
+function fmgWatchList(collectionName, localKey) {
+  fmgDB.collection(collectionName).onSnapshot(
+    snap => {
+      const items = snap.docs.map(d => d.data());
+      fmgSave(localKey, items);
+      fmgNotifyUpdated(localKey);
+    },
+    err => console.error("Cloud sync (read) failed for", collectionName, err)
+  );
+}
+
+function fmgWatchMeta(docId, localKey, fallback) {
+  fmgDB.collection("fmg_meta").doc(docId).onSnapshot(
+    doc => {
+      const value = doc.exists ? doc.data().value : fallback;
+      fmgSave(localKey, value);
+      fmgNotifyUpdated(localKey);
+    },
+    err => console.error("Cloud sync (read) failed for", docId, err)
+  );
+}
+
+function fmgSyncListToCloud(collectionName, previousList, newList) {
+  if (!fmgCloudReady) return;
+  const prevIds = new Set(previousList.map(x => x.id));
+  const newIds = new Set(newList.map(x => x.id));
+  newList.forEach(item => {
+    fmgDB.collection(collectionName).doc(String(item.id)).set(item)
+      .catch(err => console.error("Cloud sync (write) failed for", collectionName, item.id, err));
+  });
+  prevIds.forEach(id => {
+    if (!newIds.has(id)) {
+      fmgDB.collection(collectionName).doc(String(id)).delete()
+        .catch(err => console.error("Cloud sync (delete) failed for", collectionName, id, err));
     }
   });
-
-  tbody.innerHTML = displayList.length ? displayList.map(b => {
-    const status = !b.freeTrial ? "Paid plan" : "Active Network";
-    return `<tr>
-      <td><b>${b.name}</b></td><td>${FMG.categoryById(b.category)?.label || b.category}</td>
-      <td>${FMG.locationById(b.location)?.label || b.location}</td>
-      <td>${status}</td><td>${b.joined || "2026-10-02"}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteBusiness('${b.id}')">Remove</button></td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="6">No businesses registered yet.</td></tr>`;
-}
-function deleteBusiness(id) {
-  if (!confirm("Remove this business and its product listings?")) return;
-  FMG.saveBusinesses(FMG.getBusinesses().filter(b => b.id !== id));
-  FMG.saveProducts(FMG.getProducts().filter(p => p.bizId !== id));
-  renderBusinessesTable(); renderAdminOverview(); renderProductsAdminTable();
 }
 
-function renderProductsAdminTable() {
-  const products = FMG.getProducts();
-  const tbody = document.getElementById("adminProductsTableBody");
-  tbody.innerHTML = products.length ? products.map(p => `
-    <tr>
-      <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:3px;"></td>
-      <td>${p.name}</td><td>${p.nano || "Verified Vendor"}</td>
-      <td>${FMG.categoryById(p.category)?.label || p.category}</td>
-      <td>${money(p.price)}</td><td>${p.stock}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="adminDeleteProduct('${p.id}')">Delete</button></td>
-    </tr>`).join("") : `<tr><td colspan="7">No products listed in cloud framework yet.</td></tr>`;
-}
-function adminDeleteProduct(id) {
-  if (!confirm("Remove this product listing from the public site?")) return;
-  FMG.saveProducts(FMG.getProducts().filter(p => p.filter(x => x.id !== id)));
-  renderProductsAdminTable();
+function fmgSaveSynced(collectionName, localKey, list) {
+  const previous = fmgLoad(localKey, []);
+  fmgSave(localKey, list);
+  fmgSyncListToCloud(collectionName, previous, list);
 }
 
-let trafficChart, userProgChart, bizProgChart;
-function renderTrafficChart() {
-  const traffic = FMG.getTraffic();
-  const ctx = document.getElementById("trafficCanvas").getContext("2d");
-  if (trafficChart) trafficChart.destroy();
-  trafficChart = new Chart(ctx, {
-    type: "line",
-    data: { 
-      labels: traffic.length ? traffic.map(t => t.date.slice(5)) : ["10-02"], 
-      datasets: [{ label: "Visits", data: traffic.length ? traffic.map(t => t.visits) :, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true, tension: 0.25 }] 
-    },
-    options: { plugins: { legend: { display: false } } }
-  });
+function fmgSyncMetaToCloud(docId, value) {
+  if (!fmgCloudReady) return;
+  fmgDB.collection("fmg_meta").doc(docId).set({ value })
+    .catch(err => console.error("Cloud sync (write) failed for", docId, err));
 }
 
-function monthKeyAdmin(d) { const dt = new Date(d); return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0"); }
-function last6MonthKeys() {
-  const now = new Date(); const keys = [];
-  for (let i = 5; i >= 0; i--) keys.push(monthKeyAdmin(new Date(now.getFullYear(), now.getMonth() - i, 1)));
-  return keys;
-}
-function renderUserProgressionChart() {
-  const keys = last6MonthKeys();
-  const users = FMG.getUsers();
-  const counts = keys.map(k => users.filter(u => u.joined && u.joined.slice(0, 7) <= k).length || 4);
-  const ctx = document.getElementById("userProgCanvas").getContext("2d");
-  if (userProgChart) userProgChart.destroy();
-  userProgChart = new Chart(ctx, {
-    type: "line",
-    data: { labels: keys.map(k => k.slice(5)), datasets: [{ label: "Registered users", data: counts, borderColor: "#E8A93B", backgroundColor: "rgba(232,169,59,0.15)", fill: true }] },
-    options: { plugins: { legend: { display: false } } }
-  });
-}
-function renderBizProgressionChart() {
-  const keys = last6MonthKeys();
-  const businesses = FMG.getBusinesses();
-  const counts = keys.map(k => businesses.filter(b => b.joined && b.joined.slice(0, 7) <= k).length || 1);
-  const ctx = document.getElementById("bizProgCanvas").getContext("2d");
-  if (bizProgChart) bizProgChart.destroy();
-  bizProgChart = new Chart(ctx, {
-    type: "line",
-    data: { labels: keys.map(k => k.slice(5)), datasets: [{ label: "Registered businesses", data: counts, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true }] },
-    options: { plugins: { legend: { display: false } } }
-  });
+function fmgInitCloud() {
+  if (typeof FMG_CLOUD_ENABLED === "undefined" || !FMG_CLOUD_ENABLED) return;
+  if (typeof firebase === "undefined") {
+    console.warn("FMG_CLOUD_ENABLED is true but the Firebase scripts didn't load — " +
+      "check your internet connection and script tags. Running in local-only mode for now.");
+    return;
+  }
+  try {
+    firebase.initializeApp(FMG_FIREBASE_CONFIG);
+    fmgDB = firebase.firestore();
+    fmgCloudReady = true;
+    fmgWatchList("fmg_products", "fmg_products");
+    fmgWatchList("fmg_businesses", "fmg_businesses");
+    fmgWatchList("fmg_users", "fmg_users");
+    fmgWatchList("fmg_orders", "fmg_orders");
+    fmgWatchList("fmg_feedback", "fmg_feedback");
+    fmgWatchList("fmg_threads", "fmg_threads");
+    fmgWatchMeta("payment_accounts", "fmg_payment_accounts", {});
+    fmgWatchMeta("registered_business_count", "fmg_registered_business_count", 0);
+  } catch (e) {
+    console.error("Could not start cloud sync — check FMG_FIREBASE_CONFIG. Falling back to local-only mode:", e);
+    fmgCloudReady = false;
+  }
 }
 
-function bootAdminPanel() {
-  renderAdminOverview();
-  renderUsersTable();
-  renderBusinessesTable();
-  renderProductsAdminTable();
+/* ---------- placeholder art (no external image hosting needed) ----------
+   Businesses upload real photos (stored as compressed data URLs — see
+   js/main.js compressImage()). Until a photo is uploaded, or for the demo
+   catalogue, we render a light, on-brand SVG tile so the grid never shows
+   broken images and never depends on outside servers. */
+function fmgPlaceholder(category, seedText) {
+  const palettes = {
+    electronics: ["#1B2A4A", "#E8A93B"],
+    fashion: ["#3B2417", "#E8A93B"],
+    office: ["#14110F", "#C7CBD1"],
+    machinery: ["#2B2016", "#E8A93B"],
+    home: ["#3B2417", "#FBF9F6"],
+    agriculture: ["#1B2A4A", "#8FAE6B"]
+  };
+  const [bg, fg] = palettes[category] || ["#14110F", "#E8A93B"];
+  const initials = (seedText || category).trim().slice(0, 2).toUpperCase();
+  const svg = `<svg xmlns="http://w3.org" viewBox="0 0 400 300">
+    <rect width="400" height="300" fill="${bg}"/>
+    <circle cx="330" cy="40" r="90" fill="${fg}" opacity="0.12"/>
+    <circle cx="40" cy="270" r="110" fill="${fg}" opacity="0.1"/>
+    <text x="200" y="168" font-family="Georgia, serif" font-size="72" fill="${fg}" text-anchor="middle" opacity="0.9">${initials}</text>
+  </svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
 }
 
-document.addEventListener("fmg:updated", bootAdminPanel);
-document.addEventListener("DOMContentLoaded", checkAdminGate);
+/* ---------- seed content (first run only) ---------- */
+
+function fmgSeed() {
+  if (typeof FMG_CLOUD_ENABLED !== "undefined" && FMG_CLOUD_ENABLED) return; // cloud mode starts empty — real sign-ups only
+  if (fmgLoad("fmg_seeded", false)) return;
+
+  const businesses = [
+    { id: "biz_kasese_electro", name: "Kasese Electro Hub", email: "kasese.electro@example.com", password: "demo1234",
+      category: "electronics", location: "kampala", bio: "Phones, accessories and home electronics at fair prices.",
+      joined: "2026-02-11", freeTrial: true, trialEndsAt: "2026-08-11",
+      paymentMethods: fmgEmptyPaymentMethods() }
+  ];
+  fmgSave("fmg_businesses", businesses);
+  fmgSave("fmg_seeded", true);
+}
