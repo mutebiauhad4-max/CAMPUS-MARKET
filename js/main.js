@@ -80,49 +80,62 @@ function currentFilters() {
   return { cat: params.get("cat") || "", q: (params.get("q") || "").toLowerCase().trim() };
 }
 
+/* ---------------- header search + category rendering ---------------- */
+// (Keep your money function and category bar code here as they are)
+
 function renderProducts() {
   const grid = document.getElementById("productGrid");
+  if (!grid) return;
+
   const { cat, q } = currentFilters();
-  const products = FMG.getProducts();
-  const businesses = FMG.getBusinesses();
+  
+  // Make sure we pull from your exact local sync array names
+  const products = typeof FMG !== "undefined" ? FMG.getProducts() : JSON.parse(localStorage.getItem("fmg_products_data") || "[]");
+  const businesses = typeof FMG !== "undefined" ? FMG.getBusinesses() : JSON.parse(localStorage.getItem("fmg_businesses_data") || "[]");
 
   const filtered = products.filter(p => {
-    const biz = businesses.find(b => b.id === p.bizId);
+    // Looks up the registered business matching the product's bizId (e.g. "biz_muqnejfm5teaz")
+    const biz = businesses.find(b => b.id === p.bizId || b.bizId === p.bizId);
     const matchesCat = !cat || p.category === cat;
-    const haystack = (p.name + " " + p.desc + " " + (biz ? biz.name : "")).toLowerCase();
+    const haystack = (p.name + " " + p.desc + " " + (biz ? (biz.name || biz.businessName || "") : "")).toLowerCase();
     const matchesQ = !q || haystack.includes(q);
     return matchesCat && matchesQ;
   });
 
-  document.getElementById("resultCount").textContent =
-    filtered.length + (filtered.length === 1 ? " product" : " products") +
-    (cat ? " in " + FMG.categoryById(cat).label : "") + (q ? ` matching "${q}"` : "");
+  const resultCount = document.getElementById("resultCount");
+  if (resultCount) {
+    resultCount.textContent = filtered.length + (filtered.length === 1 ? " product" : " products");
+  }
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<p style="grid-column:1/-1;color:rgba(33,26,22,0.6);">
-      No products found. Try another category or search term.</p>`;
+    grid.innerHTML = `<p style="grid-column:1/-1;color:rgba(33,26,22,0.6);">No products found.</p>`;
     return;
   }
 
   grid.innerHTML = filtered.map(p => {
-    const biz = businesses.find(b => b.id === p.bizId);
+    // Find the correct seller document again for rendering
+    const biz = businesses.find(b => b.id === p.bizId || b.bizId === p.bizId);
+    
+    // Grabs the real input text name from registration, or defaults back smoothly
+    const businessName = biz ? (biz.name || biz.businessName) : "Unknown seller";
     const finalPrice = p.discount ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
-    const stockBadge = p.stock === 0 ? `<span class="stock-badge">Out of stock</span>` :
-      (p.stock <= 5 ? `<span class="stock-badge">Only ${p.stock} left</span>` : "");
+    const stockBadge = p.stock === 0 ? `<span class="stock-badge">Out of stock</span>` : "";
+
     return `
     <article class="product-card">
       <div class="product-thumb">
-        ${p.discount ? `<span class="discount-badge">-${p.discount}%</span>` : ""}
+        ${p.discount ? `<span class="discount-badge">-\${p.discount}%</span>` : ""}
         ${stockBadge}
-        <img src="${p.image}" alt="${p.name}" loading="lazy" decoding="async">
+        <img src="${p.image}" alt="${p.name}" loading="lazy">
       </div>
       <div class="product-body">
         <span class="product-cat">${FMG.categoryById(p.category) ? FMG.categoryById(p.category).label : p.category}</span>
         <span class="product-name">${p.name}</span>
-        <span class="product-biz">${biz ? biz.name : "Unknown seller"} · ${biz ? FMG.locationById(biz.location)?.label || "" : ""}</span>
+        <!-- Show the real seller name here -->
+        <span class="product-biz">${businessName}</span>
         <div class="product-price-row">
           <span class="price-now">${money(finalPrice)}</span>
-          ${p.discount ? `<span class="price-was">${money(p.price)}</span>` : ""}
+          ${p.discount ? `<span class="price-was">\${money(p.price)}</span>` : ""}
         </div>
         <div class="product-actions">
           <button class="btn btn-outline-dark btn-sm" onclick="openProductModal('${p.id}')">View</button>
