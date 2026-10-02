@@ -250,9 +250,32 @@ function savePaymentSettings() {
   toast("Payment collection accounts updated.");
 }
 
+/* ---------------- Firebase Data Synchronization ---------------- */
+function fetchFirebaseDataCollections() {
+  if (typeof db !== "undefined") {
+    // 1. Target your exact fmg_products collection stream
+    db.collection("fmg_products").onSnapshot((snapshot) => {
+      let productsList = [];
+      snapshot.forEach((doc) => {
+        productsList.push({ id: doc.id, ...doc.data() });
+      });
+      FMG.saveProducts(productsList);
+    });
+
+    // 2. Target your user accounts collection stream
+    db.collection("fmg_users").onSnapshot((snapshot) => {
+      let businessesList = [];
+      snapshot.forEach((doc) => {
+        businessesList.push({ id: doc.id, ...doc.data() });
+      });
+      FMG.saveBusinesses(businessesList);
+    });
+  }
+}
+
 /* ---------- bootstrap ---------- */
 function bootAdminPanel() {
-  renderAdminOverview();
+  fetchFirebaseDataCollections();
   renderUsersTable();
   renderBusinessesTable();
   renderProductsAdminTable();
