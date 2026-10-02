@@ -1,4 +1,4 @@
-        /* ============================================================
+/* ============================================================
    CAMPUS MARKET — data.js
    Shared data layer. By default everything is stored in the
    browser via localStorage, which is enough to demo the site on
@@ -177,7 +177,7 @@ function fmgPlaceholder(category, seedText) {
   };
   const [bg, fg] = palettes[category] || ["#14110F", "#E8A93B"];
   const initials = (seedText || category).trim().slice(0, 2).toUpperCase();
-  const svg = `<svg xmlns="http://w3.org" viewBox="0 0 400 300">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
     <rect width="400" height="300" fill="${bg}"/>
     <circle cx="330" cy="40" r="90" fill="${fg}" opacity="0.12"/>
     <circle cx="40" cy="270" r="110" fill="${fg}" opacity="0.1"/>
@@ -196,8 +196,228 @@ function fmgSeed() {
     { id: "biz_kasese_electro", name: "Kasese Electro Hub", email: "kasese.electro@example.com", password: "demo1234",
       category: "electronics", location: "kampala", bio: "Phones, accessories and home electronics at fair prices.",
       joined: "2026-02-11", freeTrial: true, trialEndsAt: "2026-08-11",
-      paymentMethods: fmgEmptyPaymentMethods() }
+      paymentMethods: { momo: { enabled: true, number: "+256 701 222 333" }, airtel: { enabled: false, number: "" },
+                         mastercard: { enabled: true, merchantId: "KEH-MC-001" } } },
+    { id: "biz_masaka_threads", name: "Masaka Threads", email: "masaka.threads@example.com", password: "demo1234",
+      category: "fashion", location: "masaka", bio: "Locally tailored fashion for men, women and children.",
+      joined: "2026-03-02", freeTrial: true, trialEndsAt: "2026-09-02",
+      paymentMethods: { momo: { enabled: true, number: "+256 772 444 555" }, airtel: { enabled: true, number: "+256 752 444 555" },
+                         mastercard: { enabled: false, merchantId: "" } } },
+    { id: "biz_gayaza_office", name: "Gayaza Office Supplies", email: "gayaza.office@example.com", password: "demo1234",
+      category: "office", location: "gayaza", bio: "Stationery, furniture and printing supplies for every office.",
+      joined: "2026-04-18", freeTrial: true, trialEndsAt: "2026-10-18",
+      paymentMethods: { momo: { enabled: true, number: "+256 703 666 777" }, airtel: { enabled: false, number: "" },
+                         mastercard: { enabled: true, merchantId: "GOS-MC-014" } } },
+    { id: "biz_kyotera_agro", name: "Kyotera Agro Machines", email: "kyotera.agro@example.com", password: "demo1234",
+      category: "machinery", location: "kyotera", bio: "Farm machinery, irrigation tools and spare parts.",
+      joined: "2026-01-27", freeTrial: true, trialEndsAt: "2026-07-27",
+      paymentMethods: { momo: { enabled: true, number: "+256 782 888 999" }, airtel: { enabled: true, number: "+256 754 888 999" },
+                         mastercard: { enabled: false, merchantId: "" } } }
   ];
-  fmgSave("fmg_businesses", businesses);
+
+  // Demo delivery/pickup coverage per seeded business (matches the "Delivery & pickup" section) —
+  // gives the checkout flow real fee data to compute against in a fresh demo.
+  const bizLocations = {
+    biz_kasese_electro: ["kampala", "gayaza"],
+    biz_masaka_threads: ["masaka", "kumasaka", "ssembabule"],
+    biz_gayaza_office: ["gayaza", "kampala"],
+    biz_kyotera_agro: ["kyotera", "masaka"]
+  };
+  Object.entries(bizLocations).forEach(([bizId, locs]) => fmgSave("fmg_biz_locations_" + bizId, locs));
+
+  const products = [
+    { name: "Dual-SIM Smartphone", category: "electronics", bizId: "biz_kasese_electro", price: 620000, discount: 10, stock: 24,
+      desc: "6.5\" display, 128GB storage, dual camera. Great value entry smartphone.",
+      deliveryEnabled: true, deliveryFees: { kampala: 5000, gayaza: 7000 } },
+    { name: "Bluetooth Speaker", category: "electronics", bizId: "biz_kasese_electro", price: 95000, discount: 0, stock: 40,
+      desc: "Portable speaker with 12-hour battery life and deep bass.",
+      deliveryEnabled: true, deliveryFees: { kampala: 3000, gayaza: 4000 } },
+    { name: "Solar Charging Kit", category: "electronics", bizId: "biz_kasese_electro", price: 180000, discount: 15, stock: 12,
+      desc: "Solar panel with two USB ports, ideal for areas with unreliable power.",
+      deliveryEnabled: false, deliveryFees: {} },
+    { name: "Men's Tailored Suit", category: "fashion", bizId: "biz_masaka_threads", price: 260000, discount: 0, stock: 8,
+      desc: "Made-to-measure two-piece suit, locally tailored in Masaka.",
+      deliveryEnabled: true, deliveryFees: { masaka: 2000, kumasaka: 2000, ssembabule: 6000 } },
+    { name: "Ankara Print Dress", category: "fashion", bizId: "biz_masaka_threads", price: 85000, discount: 20, stock: 15,
+      desc: "Vibrant Ankara print, available in multiple sizes.",
+      deliveryEnabled: true, deliveryFees: { masaka: 2000, kumasaka: 2000, ssembabule: 6000 } },
+    { name: "Kids School Uniform Set", category: "fashion", bizId: "biz_masaka_threads", price: 45000, discount: 0, stock: 30,
+      desc: "Durable school uniform set, sizes for ages 5 to 14.",
+      deliveryEnabled: false, deliveryFees: {} },
+    { name: "Office Desk (1.2m)", category: "office", bizId: "biz_gayaza_office", price: 310000, discount: 5, stock: 10,
+      desc: "Sturdy wood-finish office desk with drawer storage.",
+      deliveryEnabled: true, deliveryFees: { gayaza: 8000, kampala: 10000 } },
+    { name: "Ream of A4 Paper (5-pack)", category: "office", bizId: "biz_gayaza_office", price: 60000, discount: 0, stock: 100,
+      desc: "High quality 80gsm printing paper, five reams.",
+      deliveryEnabled: true, deliveryFees: { gayaza: 2000, kampala: 4000 } },
+    { name: "Ergonomic Office Chair", category: "office", bizId: "biz_gayaza_office", price: 220000, discount: 12, stock: 18,
+      desc: "Adjustable height, lumbar support, mesh back.",
+      deliveryEnabled: false, deliveryFees: {} },
+    { name: "Water Pump (2 inch)", category: "machinery", bizId: "biz_kyotera_agro", price: 540000, discount: 0, stock: 6,
+      desc: "Petrol-powered water pump for irrigation, 2-inch outlet.",
+      deliveryEnabled: false, deliveryFees: {} },
+    { name: "Maize Milling Machine", category: "machinery", bizId: "biz_kyotera_agro", price: 2400000, discount: 8, stock: 3,
+      desc: "Diesel-powered milling machine, 200kg/hour capacity.",
+      deliveryEnabled: false, deliveryFees: {} },
+    { name: "Hand Hoe Set (10-pack)", category: "machinery", bizId: "biz_kyotera_agro", price: 150000, discount: 0, stock: 25,
+      desc: "Ten durable hand hoes for farm and garden work.",
+      deliveryEnabled: true, deliveryFees: { kyotera: 3000, masaka: 6000 } }
+  ];
+
+  const seededBiz = businesses.map(b => ({ ...b, role: "business" }));
+  const seededProducts = products.map(p => ({
+    id: fmgId("prod"),
+    name: p.name,
+    category: p.category,
+    bizId: p.bizId,
+    price: p.price,
+    discount: p.discount,
+    stock: p.stock,
+    desc: p.desc,
+    deliveryEnabled: !!p.deliveryEnabled,
+    deliveryFees: p.deliveryFees || {},
+    image: fmgPlaceholder(p.category, p.name),
+    createdAt: new Date().toISOString(),
+    views: Math.floor(Math.random() * 300) + 20
+  }));
+
+  fmgSave("fmg_businesses", seededBiz);
+  fmgSave("fmg_products", seededProducts);
+  fmgSave("fmg_users", []);
+  fmgSave("fmg_orders", []);
+  fmgSave("fmg_cart", []);
+  fmgSave("fmg_threads", []);
+  fmgSave("fmg_feedback", [
+    { id: fmgId("fb"), from: "user", name: "Grace N.", message: "I love how easy it is to find fashion items from Masaka sellers!", createdAt: "2026-05-02" }
+  ]);
+  fmgSave("fmg_traffic", fmgGenerateTraffic());
+  fmgSave("fmg_payment_accounts", { momo: "+256 700 000 000 (GROUP A KU MASAKA)", airtel: "+256 750 000 000 (GROUP A KU MASAKA)", mastercard: "Merchant ID: KUM-2026-FMG-001" });
+  fmgSave("fmg_registered_business_count", businesses.length);
   fmgSave("fmg_seeded", true);
 }
+
+function fmgGenerateTraffic() {
+  const days = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    days.push({ date: d.toISOString().slice(0, 10), visits: Math.floor(Math.random() * 400) + 150 });
+  }
+  return days;
+}
+
+/* ---------- accessors used by the rest of the app ---------- */
+
+const FMG = {
+  categories: FMG_CATEGORIES,
+  locations: FMG_LOCATIONS,
+
+  getProducts() { return fmgLoad("fmg_products", []); },
+  saveProducts(list) { fmgSaveSynced("fmg_products", "fmg_products", list); },
+
+  getBusinesses() { return fmgLoad("fmg_businesses", []); },
+  saveBusinesses(list) { fmgSaveSynced("fmg_businesses", "fmg_businesses", list); },
+
+  getUsers() { return fmgLoad("fmg_users", []); },
+  saveUsers(list) { fmgSaveSynced("fmg_users", "fmg_users", list); },
+
+  getOrders() { return fmgLoad("fmg_orders", []); },
+  saveOrders(list) { fmgSaveSynced("fmg_orders", "fmg_orders", list); },
+
+  getCart() { return fmgLoad("fmg_cart", []); },
+  saveCart(list) { fmgSave("fmg_cart", list); },
+
+  getFeedback() { return fmgLoad("fmg_feedback", []); },
+  saveFeedback(list) { fmgSaveSynced("fmg_feedback", "fmg_feedback", list); },
+
+  getThreads() { return fmgLoad("fmg_threads", []); },
+  saveThreads(list) { fmgSaveSynced("fmg_threads", "fmg_threads", list); },
+
+  getTraffic() { return fmgLoad("fmg_traffic", []); },
+
+  getPaymentAccounts() { return fmgLoad("fmg_payment_accounts", {}); },
+  savePaymentAccounts(v) { fmgSave("fmg_payment_accounts", v); fmgSyncMetaToCloud("payment_accounts", v); },
+
+  getSession() { return fmgLoad("fmg_session", null); },
+  setSession(v) { fmgSave("fmg_session", v); },
+  clearSession() { localStorage.removeItem("fmg_session"); },
+
+  getConsent() { return fmgLoad("fmg_consent", null); },
+  setConsent(v) { fmgSave("fmg_consent", v); },
+
+  businessById(id) { return this.getBusinesses().find(b => b.id === id); },
+  locationById(id) { return FMG_LOCATIONS.find(l => l.id === id); },
+  categoryById(id) { return FMG_CATEGORIES.find(c => c.id === id); },
+
+  paymentMethods: FMG_PAYMENT_METHODS,
+  emptyPaymentMethods: fmgEmptyPaymentMethods,
+  maxDeliveryFee: FMG_MAX_DELIVERY_FEE,
+
+  // Payment methods a single business actually has switched on AND filled in an account for.
+  businessOfferedMethods(biz) {
+    const pm = (biz && biz.paymentMethods) || fmgEmptyPaymentMethods();
+    return FMG_PAYMENT_METHODS.filter(m => {
+      const entry = pm[m.id] || {};
+      return entry.enabled && String(entry[m.field] || "").trim().length > 0;
+    }).map(m => m.id);
+  },
+
+  // The payment methods every business represented in this cart can accept in common —
+  // a shopper can only check out together if there is at least one shared method.
+  commonOfferedMethods(cart) {
+    const products = this.getProducts();
+    const businesses = this.getBusinesses();
+    const bizIds = new Set();
+    cart.forEach(c => {
+      const p = products.find(x => x.id === c.productId);
+      if (p) bizIds.add(p.bizId);
+    });
+    if (bizIds.size === 0) return [];
+    let common = null;
+    bizIds.forEach(id => {
+      const biz = businesses.find(b => b.id === id);
+      const offered = new Set(this.businessOfferedMethods(biz));
+      common = common === null ? offered : new Set([...common].filter(m => offered.has(m)));
+    });
+    return FMG_PAYMENT_METHODS.filter(m => common && common.has(m.id)).map(m => m.id);
+  },
+
+  // Delivery fee for one product to one location, clamped to the platform cap either way.
+  productDeliveryFee(product, locationId) {
+    if (!product || !product.deliveryEnabled || !locationId) return 0;
+    const fee = (product.deliveryFees || {})[locationId];
+    if (!fee || fee <= 0) return 0;
+    return Math.min(fee, FMG_MAX_DELIVERY_FEE);
+  },
+
+  // Total delivery fee for a cart at one chosen location: once per distinct product, not per unit.
+  cartDeliveryFee(cart, locationId) {
+    const products = this.getProducts();
+    let total = 0;
+    cart.forEach(c => {
+      const p = products.find(x => x.id === c.productId);
+      total += this.productDeliveryFee(p, locationId);
+    });
+    return total;
+  },
+
+  placeholder: fmgPlaceholder,
+  uid: fmgId,
+
+  isCloudEnabled() { return fmgCloudReady; },
+
+  isFreeTrialAvailable() {
+    return fmgLoad("fmg_registered_business_count", 0) < FMG_FREE_TRIAL_LIMIT;
+  },
+  registerBusinessTrialSlot() {
+    const n = fmgLoad("fmg_registered_business_count", 0);
+    const next = n + 1;
+    fmgSave("fmg_registered_business_count", next);
+    fmgSyncMetaToCloud("registered_business_count", next);
+    return n < FMG_FREE_TRIAL_LIMIT;
+  }
+};
+
+fmgSeed();
+fmgInitCloud();
