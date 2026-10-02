@@ -289,10 +289,6 @@ function fetchFirebaseDataCollections() {
       // Save them cleanly where the sidebar tabs expect them to be
       FMG.saveUsers(generalUsers);
       FMG.saveBusinesses(verifiedBusinesses);
-
-      // Force the admin screen tables to refresh immediately with the sorted data
-      if (typeof renderUsersTable === "function") renderUsersTable();
-      if (typeof renderBusinessesTable === "function") renderBusinessesTable();
     });
   }
 }
