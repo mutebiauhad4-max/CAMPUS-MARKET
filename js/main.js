@@ -9,16 +9,10 @@ function money(n) {
 /* ---------------- cookie / data-use consent ---------------- */
 function initConsent() {
   const banner = document.getElementById("cookieBanner");
-  
-  // Safety Check: If the banner doesn't exist on this page, exit smoothly without crashing
-  if (!banner) return; 
+  if (!banner) return; // Safety check: exit if banner element doesn't exist on the current page
 
   const consent = FMG.getConsent();
-  if (consent) { 
-    banner.classList.add("hidden"); 
-    return; 
-  }
-  
+  if (consent) { banner.classList.add("hidden"); return; }
   banner.classList.remove("hidden");
   
   const acceptBtn = document.getElementById("consentAccept");
@@ -79,7 +73,7 @@ function bindOverlayClose(id) {
 /* ---------------- header search + category rendering ---------------- */
 function renderCategoryBar() {
   const bar = document.getElementById("categoryBar");
-  if (!bar) return;
+  if (!bar) return; // Safety check
 
   const params = new URLSearchParams(location.search);
   const active = params.get("cat") || "";
@@ -111,7 +105,7 @@ function currentFilters() {
 
 function renderProducts() {
   const grid = document.getElementById("productGrid");
-  if (!grid) return;
+  if (!grid) return; // Safety check
 
   const { cat, q } = currentFilters();
   const products = FMG.getProducts();
@@ -146,7 +140,7 @@ function renderProducts() {
     return `
     <article class="product-card">
       <div class="product-thumb">
-        ${p.discount ? `<span class="discount-badge">-\${p.discount}%</span>` : ""}
+        ${p.discount ? `<span class="discount-badge">-${p.discount}%</span>` : ""}
         ${stockBadge}
         <img src="${p.image}" alt="${p.name}" loading="lazy" decoding="async">
       </div>
@@ -156,7 +150,7 @@ function renderProducts() {
         <span class="product-biz">${biz ? biz.name : "Unknown seller"} · ${biz ? FMG.locationById(biz.location)?.label || "" : ""}</span>
         <div class="product-price-row">
           <span class="price-now">${money(finalPrice)}</span>
-          ${p.discount ? `<span class="price-was">\${money(p.price)}</span>` : ""}
+          ${p.discount ? `<span class="price-was">${money(p.price)}</span>` : ""}
         </div>
         <div class="product-actions">
           <button class="btn btn-outline-dark btn-sm" onclick="openProductModal('${p.id}')">View</button>
@@ -184,7 +178,7 @@ function openProductModal(productId) {
           <p class="sub">Sold by <strong>${biz ? biz.name : "—"}</strong> · ${biz ? FMG.locationById(biz.location)?.label : ""}</p>
           <div class="product-price-row" style="margin-bottom:10px;">
             <span class="price-now" style="font-size:1.3rem;">${money(finalPrice)}</span>
-            ${p.discount ? `<span class="price-was">\${money(p.price)}</span>` : ""}
+            ${p.discount ? `<span class="price-was">${money(p.price)}</span>` : ""}
           </div>
           <p>${p.desc}</p>
           <p class="form-note">${p.stock > 0 ? p.stock + " in stock" : "Currently out of stock"}</p>
@@ -202,9 +196,36 @@ function openProductModal(productId) {
   FMG.saveProducts(products);
 }
 
-// Global initialization trigger for marketplace pages
-document.addEventListener("DOMContentLoaded", () => {
-  initConsent();
-  renderCategoryBar();
-  renderProducts();
-});
+/* ---------------- auth: signup / login ---------------- */
+let signupRole = "user";
+
+function openAuthModal(mode) {
+  const html = `
+  <div class="modal-overlay" id="authOverlay">
+    <div class="modal">
+      <button class="modal-close" data-close>&times;</button>
+      <h2>${mode === 'signup' ? 'Create an account' : 'Sign in'}</h2>
+      <p class="sub">Welcome to CAMPUS MARKET.</p>
+      <form id="authForm" style="margin-top:15px;">
+        ${mode === 'signup' ? `
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>I want to join as a:</label>
+          <div style="display:flex;gap:15px;margin-top:5px;">
+            <label><input type="radio" name="role" value="user" checked onclick="signupRole='user'"> Buyer / Student</label>
+            <label><input type="radio" name="role" value="biz" onclick="signupRole='biz'"> Business / Seller</label>
+          </div>
+        </div>` : ''}
+        <div class="form-group">
+          <label>Email address or Username</label>
+          <input type="text" id="authLogin" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="authPassword" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:10px;">
+          ${mode === 'signup' ? 'Sign up' : 'Sign in'}
+        </button>
+      </form>
+    </div>
+  </div>`;
