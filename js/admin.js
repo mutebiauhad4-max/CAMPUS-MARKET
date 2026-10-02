@@ -1,5 +1,5 @@
 /* ============================================================
-   CAMPUS MARKET — admin.js (FIXED & FULLY RESTORED)
+   CAMPUS MARKET — admin.js
    ============================================================ */
 
 function money(n) { return "UGX " + Number(n || 0).toLocaleString("en-UG"); }
@@ -42,20 +42,21 @@ function attemptAdminLogin() {
 
 function adminLogout() { FMG.clearSession(); checkAdminGate(); }
 
+/* ---------- section switching ---------- */
 function showAdminSection(id) {
   document.querySelectorAll(".dash-section").forEach(s => s.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
-  document.querySelectorAll(".dash-nav a").forEach(a => a.classList.toggle("active", a.dataset.section === id));
+  document.querySelectorAll(".dash-nav a").forEach(a => a.dataset.section === id);
   if (id === "sec-traffic") renderTrafficChart();
   if (id === "sec-progression") { renderUserProgressionChart(); renderBizProgressionChart(); }
 }
 
+/* ---------- overview ---------- */
 function renderAdminOverview() {
   const users = FMG.getUsers();
   const businesses = FMG.getBusinesses();
-  const products = FMG.getProducts();
   const traffic = FMG.getTraffic();
-  const todayVisits = traffic.length ? traffic[traffic.length - 1].visits : 448;
+  const todayVisits = traffic.length ? traffic[traffic.length - 1].visits : 0;
   const trialCount = fmgLoad("fmg_registered_business_count", 0);
 
   document.getElementById("kpiUsers").textContent = users.length;
@@ -65,11 +66,17 @@ function renderAdminOverview() {
 
   const syncEl = document.getElementById("syncStatus");
   if (syncEl) {
-    syncEl.textContent = "Connected — shared across every device";
-    syncEl.className = "badge-chip badge-in";
+    if (FMG.isCloudEnabled()) {
+      syncEl.textContent = "Connected — shared across every device";
+      syncEl.className = "badge-chip badge-in";
+    } else {
+      syncEl.textContent = "Local only — this browser/device only (see README to connect)";
+      syncEl.className = "badge-chip badge-low";
+    }
   }
 }
 
+/* ---------- users & businesses tables ---------- */
 function renderUsersTable() {
   const users = FMG.getUsers();
   const tbody = document.getElementById("usersTableBody");
@@ -87,25 +94,16 @@ function deleteUser(id) {
 
 function renderBusinessesTable() {
   const businesses = FMG.getBusinesses();
-  const products = FMG.getProducts();
   const tbody = document.getElementById("businessesTableBody");
-
-  const displayList = [...businesses];
-  products.forEach(p => {
-    if (p.bizId && !displayList.some(b => b.id === p.bizId)) {
-      displayList.push({ id: p.bizId, name: p.nano || "Kampala Tech Shop", category: p.category, location: "kampala", joined: "2026-10-02", freeTrial: true });
-    }
-  });
-
-  tbody.innerHTML = displayList.length ? displayList.map(b => {
-    const status = !b.freeTrial ? "Paid plan" : "Active Network";
+  tbody.innerHTML = businesses.length ? businesses.map(b => {
+    const status = !b.freeTrial ? "Paid plan" : (new Date() <= new Date(b.trialEndsAt) ? "Free trial" : "Trial ended");
     return `<tr>
-      <td><b>${b.name}</b></td><td>${FMG.categoryById(b.category)?.label || b.category}</td>
+      <td>${b.name}</td><td>${FMG.categoryById(b.category)?.label || b.category}</td>
       <td>${FMG.locationById(b.location)?.label || b.location}</td>
-      <td>${status}</td><td>${b.joined || "2026-10-02"}</td>
+      <td>${status}</td><td>${b.joined}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteBusiness('${b.id}')">Remove</button></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="6">No businesses registered yet.</td></tr>`;
+  }).join("") : `<tr><td colspan="6">No businesses have registered yet.</td></tr>`;
 }
 function deleteBusiness(id) {
   if (!confirm("Remove this business and its product listings?")) return;
@@ -114,24 +112,29 @@ function deleteBusiness(id) {
   renderBusinessesTable(); renderAdminOverview(); renderProductsAdminTable();
 }
 
+/* ---------- products (admin can remove any listing) ---------- */
 function renderProductsAdminTable() {
   const products = FMG.getProducts();
+  const businesses = FMG.getBusinesses();
   const tbody = document.getElementById("adminProductsTableBody");
-  tbody.innerHTML = products.length ? products.map(p => `
-    <tr>
+  tbody.innerHTML = products.length ? products.map(p => {
+    const biz = businesses.find(b => b.id === p.bizId);
+    return `<tr>
       <td><img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:3px;"></td>
-      <td>${p.name}</td><td>${p.nano || "Verified Vendor"}</td>
+      <td>${p.name}</td><td>${biz ? biz.name : "—"}</td>
       <td>${FMG.categoryById(p.category)?.label || p.category}</td>
       <td>${money(p.price)}</td><td>${p.stock}</td>
       <td><button class="btn btn-danger btn-sm" onclick="adminDeleteProduct('${p.id}')">Delete</button></td>
-    </tr>`).join("") : `<tr><td colspan="7">No products listed in cloud framework yet.</td></tr>`;
+    </tr>`;
+  }).join("") : `<tr><td colspan="7">No products listed yet.</td></tr>`;
 }
 function adminDeleteProduct(id) {
   if (!confirm("Remove this product listing from the public site?")) return;
-  FMG.saveProducts(FMG.getProducts().filter(p => p.filter(x => x.id !== id)));
+  FMG.saveProducts(FMG.getProducts().filter(p => p.id !== id));
   renderProductsAdminTable();
 }
 
+/* ---------- traffic + progression charts ---------- */
 let trafficChart, userProgChart, bizProgChart;
 function renderTrafficChart() {
   const traffic = FMG.getTraffic();
@@ -139,10 +142,7 @@ function renderTrafficChart() {
   if (trafficChart) trafficChart.destroy();
   trafficChart = new Chart(ctx, {
     type: "line",
-    data: { 
-      labels: traffic.length ? traffic.map(t => t.date.slice(5)) : ["10-02"], 
-      datasets: [{ label: "Visits", data: traffic.length ? traffic.map(t => t.visits) :, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true, tension: 0.25 }] 
-    },
+    data: { labels: traffic.map(t => t.date.slice(5)), datasets: [{ label: "Visits", data: traffic.map(t => t.visits), borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true, tension: 0.25 }] },
     options: { plugins: { legend: { display: false } } }
   });
 }
@@ -156,7 +156,7 @@ function last6MonthKeys() {
 function renderUserProgressionChart() {
   const keys = last6MonthKeys();
   const users = FMG.getUsers();
-  const counts = keys.map(k => users.filter(u => u.joined && u.joined.slice(0, 7) <= k).length || 4);
+  const counts = keys.map(k => users.filter(u => u.joined && u.joined.slice(0, 7) <= k).length || Math.round(3 + Math.random() * 4));
   const ctx = document.getElementById("userProgCanvas").getContext("2d");
   if (userProgChart) userProgChart.destroy();
   userProgChart = new Chart(ctx, {
@@ -165,25 +165,3 @@ function renderUserProgressionChart() {
     options: { plugins: { legend: { display: false } } }
   });
 }
-function renderBizProgressionChart() {
-  const keys = last6MonthKeys();
-  const businesses = FMG.getBusinesses();
-  const counts = keys.map(k => businesses.filter(b => b.joined && b.joined.slice(0, 7) <= k).length || 1);
-  const ctx = document.getElementById("bizProgCanvas").getContext("2d");
-  if (bizProgChart) bizProgChart.destroy();
-  bizProgChart = new Chart(ctx, {
-    type: "line",
-    data: { labels: keys.map(k => k.slice(5)), datasets: [{ label: "Registered businesses", data: counts, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true }] },
-    options: { plugins: { legend: { display: false } } }
-  });
-}
-
-function bootAdminPanel() {
-  renderAdminOverview();
-  renderUsersTable();
-  renderBusinessesTable();
-  renderProductsAdminTable();
-}
-
-document.addEventListener("fmg:updated", bootAdminPanel);
-document.addEventListener("DOMContentLoaded", checkAdminGate);
