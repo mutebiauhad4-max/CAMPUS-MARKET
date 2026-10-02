@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin panel — CAMPUS MARKET</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%2314110F'/%3E%3Cpath d='M11 25 L11 16 L20 10 L29 16 L29 25' stroke='%23E8A93B' stroke-width='2.6' fill='none' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cline x1='9' y1='25' x2='31' y2='25' stroke='%23E8A93B' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="gate-shell" id="adminGate">
+  <div class="gate-box">
+    <h2 style="margin-bottom:4px;">Admin panel</h2>
+    <p class="sub">CAMPUS MARKET — restricted access</p>
+    <div class="field"><label>Admin name</label><input id="gateName" placeholder="ADMIN GROUP A"></div>
+    <div class="field"><label>Password</label><input id="gatePw" type="password" placeholder="••••••••"></div>
+    <div id="gateError" class="error-text hidden"></div>
+    <button class="btn btn-dark btn-block" id="gateLoginBtn">Enter admin panel</button>
+    <p class="form-note" style="margin-top:14px;"><a href="index.html" style="color:var(--navy);">← Back to public site</a></p>
+  </div>
+</div>
+
+<div class="dash-shell hidden" id="adminShell">
+  <aside class="dash-sidebar">
+    <div class="brand"><span class="brand-mark" style="font-size:0.98rem;white-space:nowrap;">CAMPUS MARKET</span></div>
+    <nav class="dash-nav">
+      <a href="#" data-section="sec-overview" class="active">Overview</a>
+      <a href="#" data-section="sec-users">Users</a>
+      <a href="#" data-section="sec-businesses">Businesses</a>
+      <a href="#" data-section="sec-products">Products</a>
+      <div class="divider"></div>
+      <a href="#" data-section="sec-traffic">Web traffic</a>
+      <a href="#" data-section="sec-progression">Progression graphs</a>
+      <a href="#" data-section="sec-reports">Reports</a>
+      <div class="divider"></div>
+      <a href="#" data-section="sec-feedback">Feedback</a>
+      <a href="#" data-section="sec-payments">Payment accounts</a>
+      <div class="divider"></div>
+      <a href="index.html">View public site</a>
+      <button id="adminLogoutBtn">Log out</button>
+    </nav>
+  </aside>
+
+  <main class="dash-main">
+    <div class="dash-topline">
+      <h2 style="margin:0;">Admin overview</h2>
+      <span class="trial-pill">ADMIN GROUP A</span>
+    </div>
+
+    <section id="sec-overview" class="dash-section">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Registered users</div><div class="kpi-value" id="kpiUsers">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Registered businesses</div><div class="kpi-value" id="kpiBusinesses">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Web traffic</div><div class="kpi-value" id="kpiTraffic">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Free-trial slots left</div><div class="kpi-value" id="kpiTrialSlots">—</div></div>
+      </div>
+      <div class="panel">
+        <h3>Data storage status</h3>
+        <p class="sub" style="margin-top:-6px;">
+          Storage mode: <span id="syncStatus" class="badge-chip badge-low">Checking…</span>
+        </p>
+        <p class="form-note">If this says "Local only", every device is keeping its own separate copy of the
+        data — that's why new sign-ups and uploaded products from other devices don't show up here. See the
+        "Connect a shared database" section of README.md to switch this on for free.</p>
+      </div>
+      <div class="panel">
+        <h3>What this panel controls</h3>
+        <p>Register businesses and users happen automatically through sign-up; from here you can review who has
+        joined, remove accounts or listings that break marketplace rules, monitor traffic and growth, generate
+        reports, read feedback from users and businesses, and set the MTN MoMo / Mastercard accounts that collect
+        business subscription payments.</p>
+      </div>
+    </section>
+
+    <section id="sec-users" class="dash-section hidden">
+      <div class="panel">
+        <h3>Users</h3>
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Action</th></tr></thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sec-businesses" class="dash-section hidden">
+      <div class="panel">
+        <h3>Businesses</h3>
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Category</th><th>Location</th><th>Plan status</th><th>Joined</th><th>Action</th></tr></thead>
+          <tbody id="businessesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sec-products" class="dash-section hidden">
+      <div class="panel">
+        <h3>All product listings</h3>
+        <table class="data-table">
+          <thead><tr><th>Image</th><th>Product</th><th>Business</th><th>Category</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead>
+          <tbody id="adminProductsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sec-traffic" class="dash-section hidden">
+      <div class="panel">
+        <h3>Web traffic — last 30 days</h3>
+        <canvas id="trafficCanvas" height="110"></canvas>
+      </div>
+    </section>
+
+    <section id="sec-progression" class="dash-section hidden">
+      <div class="panel-grid-2">
+        <div class="panel"><h3>User growth</h3><canvas id="userProgCanvas" height="110"></canvas></div>
+        <div class="panel"><h3>Business growth</h3><canvas id="bizProgCanvas" height="110"></canvas></div>
+      </div>
+    </section>
+
+    <section id="sec-reports" class="dash-section hidden">
+      <div class="panel">
+        <h3>Reports</h3>
+        <p class="sub" style="margin-top:-6px;">Download a plain-text summary of users, businesses, listings and revenue.</p>
+        <button class="btn btn-primary" id="reportBtn">Download report</button>
+      </div>
+    </section>
+
+    <section id="sec-feedback" class="dash-section hidden">
+      <div class="panel">
+        <h3>General feedback</h3>
+        <div id="adminFeedbackList"></div>
+      </div>
+      <div class="panel">
+        <h3>Shopper &amp; business conversations</h3>
+        <p class="sub" style="margin-top:-6px;">Read-only — businesses reply from their own dashboard.</p>
+        <div id="adminThreadsList"></div>
+      </div>
+    </section>
+
+    <section id="sec-payments" class="dash-section hidden">
+      <div class="panel" style="max-width:480px;">
+        <h3>Payment collection accounts</h3>
+        <p class="sub" style="margin-top:-6px;">Businesses pay their subscription fee (after their free 6 months) into these accounts.</p>
+        <div class="field"><label>MTN MoMo number</label><input id="momoAccount" placeholder="+256 7XX XXX XXX"></div>
+        <div class="field"><label>Airtel Pay number</label><input id="airtelAccount" placeholder="+256 7XX XXX XXX"></div>
+        <div class="field"><label>Mastercard merchant ID</label><input id="cardAccount" placeholder="Merchant ID"></div>
+        <button class="btn btn-primary" id="paymentSaveBtn">Save</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Optional shared-database sync: see js/firebase-config.js for the free 5-minute setup.
+     Harmless to leave in even if you never turn it on. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

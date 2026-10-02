@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business dashboard — CAMPUS MARKET</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%2314110F'/%3E%3Cpath d='M11 25 L11 16 L20 10 L29 16 L29 25' stroke='%23E8A93B' stroke-width='2.6' fill='none' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cline x1='9' y1='25' x2='31' y2='25' stroke='%23E8A93B' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+<div class="dash-shell">
+  <aside class="dash-sidebar">
+    <div class="brand"><span class="brand-mark" style="font-size:0.98rem;white-space:nowrap;">CAMPUS MARKET</span></div>
+    <nav class="dash-nav">
+      <a href="#" data-section="sec-overview" class="active">Overview</a>
+      <a href="#" data-section="sec-products">Products</a>
+      <a href="#" data-section="sec-orders">Sales &amp; orders</a>
+      <div class="divider"></div>
+      <a href="#" data-section="sec-finance">Income &amp; balance sheet</a>
+      <a href="#" data-section="sec-progression">Progression graph</a>
+      <a href="#" data-section="sec-sales">Sales per month</a>
+      <div class="divider"></div>
+      <a href="#" data-section="sec-locations">Delivery &amp; pickup</a>
+      <a href="#" data-section="sec-payment-methods">Payment methods</a>
+      <a href="#" data-section="sec-chatbot">Chat assistant</a>
+      <a href="#" data-section="sec-messages">Messages &amp; feedback</a>
+      <div class="divider"></div>
+      <a href="index.html">View public site</a>
+      <button id="logoutBtn">Log out</button>
+    </nav>
+  </aside>
+
+  <main class="dash-main">
+    <div class="dash-topline">
+      <div>
+        <h2 style="margin-bottom:2px;" id="bizNameLabel">Business</h2>
+        <span class="trial-pill" id="trialPill">Loading…</span>
+      </div>
+      <button class="btn btn-primary" id="addProductBtn">+ Upload product</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section id="sec-overview" class="dash-section">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-value" id="kpiRevenue">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Products listed</div><div class="kpi-value" id="kpiProducts">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Units sold</div><div class="kpi-value" id="kpiUnits">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Low-stock items</div><div class="kpi-value" id="kpiLowStock">—</div></div>
+      </div>
+      <div class="panel">
+        <h3>Recent activity</h3>
+        <ul id="notificationList" style="margin:0;padding-left:18px;font-size:0.9rem;line-height:1.9;"></ul>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section id="sec-products" class="dash-section hidden">
+      <div class="panel">
+        <h3>Your products</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Image</th><th>Product</th><th>Price</th><th>Stock</th><th>Views</th><th>Actions</th></tr></thead>
+            <tbody id="productsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="sec-orders" class="dash-section hidden">
+      <div class="panel">
+        <h3>Sales &amp; orders</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Delivery point</th><th>Revenue</th></tr></thead>
+            <tbody id="ordersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINANCE -->
+    <section id="sec-finance" class="dash-section hidden">
+      <div class="panel-grid-2">
+        <div class="panel"><h3>Income statement</h3><div id="incomeStatement"></div></div>
+        <div class="panel"><h3>Balance sheet</h3><div id="balanceSheet"></div></div>
+      </div>
+    </section>
+
+    <!-- PROGRESSION -->
+    <section id="sec-progression" class="dash-section hidden">
+      <div class="panel">
+        <h3>Business progression (last 6 months)</h3>
+        <canvas id="progressionCanvas" height="110"></canvas>
+      </div>
+    </section>
+
+    <!-- SALES PER MONTH -->
+    <section id="sec-sales" class="dash-section hidden">
+      <div class="panel">
+        <h3>Sales per month</h3>
+        <canvas id="salesCanvas" height="110"></canvas>
+      </div>
+    </section>
+
+    <!-- LOCATIONS -->
+    <section id="sec-locations" class="dash-section hidden">
+      <div class="panel">
+        <h3>Delivery &amp; pickup locations</h3>
+        <p class="sub" style="margin-top:-6px;">Choose where you can deliver to or offer pickup from. Selected points show on the map and are offered to shoppers at checkout.</p>
+        <div class="location-list" id="locationChips"></div>
+        <div id="map" style="margin-top:16px;"></div>
+      </div>
+    </section>
+
+    <!-- PAYMENT METHODS -->
+    <section id="sec-payment-methods" class="dash-section hidden">
+      <div class="panel" style="max-width:480px;">
+        <h3>Payment methods you accept</h3>
+        <p class="sub" style="margin-top:-6px;">Shoppers only see a payment option at checkout once it's switched
+        on here AND has an account number filled in. If a shopper's cart mixes products from businesses with no
+        payment method in common, checkout will ask them to split the order.</p>
+        <div id="paymentMethodsForm"></div>
+        <button class="btn btn-primary" id="paymentMethodsSaveBtn">Save payment methods</button>
+      </div>
+    </section>
+
+    <!-- CHATBOT -->
+    <section id="sec-chatbot" class="dash-section hidden">
+      <div class="panel">
+        <h3>Chat assistant</h3>
+        <p class="sub" style="margin-top:-6px;">Every business gets an assistant on their storefront that answers common questions and lets you know when a shopper adds your item to their cart.</p>
+        <div class="field">
+          <label>Assistant personality</label>
+          <select id="chatbotPersona">
+            <option value="friendly">Friendly &amp; casual</option>
+            <option value="formal">Formal &amp; concise</option>
+            <option value="sales">Sales-focused</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Greeting message</label>
+          <textarea id="chatbotGreeting"></textarea>
+        </div>
+        <button class="btn btn-primary" id="chatbotSaveBtn">Save assistant settings</button>
+      </div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section id="sec-messages" class="dash-section hidden">
+      <div class="panel">
+        <h3>Messages &amp; feedback from shoppers</h3>
+        <div id="messagesList"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- product form modal -->
+<div class="modal-overlay hidden" id="productFormOverlay">
+  <div class="modal modal-wide">
+    <button class="modal-close" id="productFormClose">&times;</button>
+    <h2 id="productFormTitle">Upload product</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div>
+        <label class="upload-drop" for="imageInput">
+          <img id="uploadPreview" alt="Preview">
+          <div>Click to choose a photo (auto-resized so the site stays fast)</div>
+        </label>
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
+      </div>
+      <div>
+        <div class="field"><label>Product name</label><input id="pfName"></div>
+        <div class="field-row">
+          <div class="field"><label>Category</label>
+            <select id="pfCategory"></select>
+          </div>
+          <div class="field"><label>Price (UGX)</label><input id="pfPrice" type="number" min="0"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Discount (%)</label><input id="pfDiscount" type="number" min="0" max="90"></div>
+          <div class="field"><label>Stock quantity</label><input id="pfStock" type="number" min="0"></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="pfDesc"></textarea></div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="pfDeliveryEnabled" style="width:auto;"> Offer delivery for this product
+          </label>
+        </div>
+        <div id="deliveryFeeSection" class="hidden">
+          <p class="form-note">Set a delivery fee for each town you serve (max UGX 10,000).</p>
+          <div id="deliveryFeeInputs"></div>
+        </div>
+      </div>
+    </div>
+    <div id="productFormError" class="error-text hidden" style="margin-top:6px;"></div>
+    <button class="btn btn-primary" id="productFormSave" style="margin-top:8px;">Save product</button>
+  </div>
+</div>
+
+<!-- Optional shared-database sync: see js/firebase-config.js for the free 5-minute setup.
+     Harmless to leave in even if you never turn it on. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+<script>
+  document.getElementById("pfCategory") && (document.getElementById("pfCategory").innerHTML = FMG.categories.map(c => `<option value="${c.id}">${c.label}</option>`).join(""));
+</script>
+<script>function money(n){return "UGX " + Number(n||0).toLocaleString("en-UG");}
+function toast(msg){let el=document.getElementById("fmgToast");if(!el){el=document.createElement("div");el.id="fmgToast";el.style.cssText="position:fixed;bottom:24px;left:24px;background:#14110F;color:#FBF9F6;padding:12px 18px;border-radius:4px;z-index:300;border-left:4px solid #E8A93B;font-size:0.88rem;max-width:320px;";document.body.appendChild(el);}el.textContent=msg;el.style.opacity="1";clearTimeout(window._t);window._t=setTimeout(()=>{el.style.opacity="0";},3200);}
+function logout(){FMG.clearSession();window.location.href="index.html";}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
