@@ -94,7 +94,6 @@ function renderProducts() {
   const businesses = typeof FMG !== "undefined" ? FMG.getBusinesses() : JSON.parse(localStorage.getItem("fmg_businesses_data") || "[]");
 
   const filtered = products.filter(p => {
-    // Looks up the registered business matching the product's bizId (e.g. "biz_muqnejfm5teaz")
     const biz = businesses.find(b => b.id === p.bizId || b.bizId === p.bizId);
     const matchesCat = !cat || p.category === cat;
     const haystack = (p.name + " " + p.desc + " " + (biz ? (biz.name || biz.businessName || "") : "")).toLowerCase();
@@ -113,11 +112,10 @@ function renderProducts() {
   }
 
   grid.innerHTML = filtered.map(p => {
-    // Find the correct seller document again for rendering
     const biz = businesses.find(b => b.id === p.bizId || b.bizId === p.bizId);
     
     // Grabs the real input text name from registration, or defaults back smoothly
-    const businessName = biz ? (biz.name || biz.businessName) : "Unknown seller";
+    const businessName = biz ? (biz.name || biz.businessName || biz.id) : "Unknown seller";
     const finalPrice = p.discount ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
     const stockBadge = p.stock === 0 ? `<span class="stock-badge">Out of stock</span>` : "";
 
@@ -145,6 +143,7 @@ function renderProducts() {
     </article>`;
   }).join("");
 }
+
 
 function openProductModal(productId) {
   const p = FMG.getProducts().find(x => x.id === productId);
