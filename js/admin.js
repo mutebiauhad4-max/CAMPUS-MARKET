@@ -253,7 +253,7 @@ function savePaymentSettings() {
 /* ---------------- Firebase Data Synchronization ---------------- */
 function fetchFirebaseDataCollections() {
   if (typeof db !== "undefined") {
-    // 1. Target your exact fmg_products collection stream
+    // 1. Sync products
     db.collection("fmg_products").onSnapshot((snapshot) => {
       let productsList = [];
       snapshot.forEach((doc) => {
@@ -262,13 +262,37 @@ function fetchFirebaseDataCollections() {
       FMG.saveProducts(productsList);
     });
 
-    // 2. Target your user accounts collection stream
+    // 2. Automated Smart Sorting: Look inside your fmg_users table
     db.collection("fmg_users").onSnapshot((snapshot) => {
-      let businessesList = [];
+      let generalUsers = [];
+      let verifiedBusinesses = [];
+
       snapshot.forEach((doc) => {
-        businessesList.push({ id: doc.id, ...doc.data() });
+        const userData = { id: doc.id, ...doc.data() };
+        
+        // Checks all possible registration labels to see if they signed up as a seller
+        const isBizAccount = 
+          userData.type === "biz" || 
+          userData.type === "business" ||
+          userData.role === "biz" ||
+          userData.role === "business" ||
+          userData.role === "seller" ||
+          userData.accountType === "business";
+
+        if (isBizAccount) {
+          verifiedBusinesses.push(userData);
+        } else {
+          generalUsers.push(userData);
+        }
       });
-      FMG.saveBusinesses(businessesList);
+
+      // Save them cleanly where the sidebar tabs expect them to be
+      FMG.saveUsers(generalUsers);
+      FMG.saveBusinesses(verifiedBusinesses);
+
+      // Force the admin screen tables to refresh immediately with the sorted data
+      if (typeof renderUsersTable === "function") renderUsersTable();
+      if (typeof renderBusinessesTable === "function") renderBusinessesTable();
     });
   }
 }
