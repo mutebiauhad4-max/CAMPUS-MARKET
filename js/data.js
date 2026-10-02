@@ -421,3 +421,14 @@ const FMG = {
 
 fmgSeed();
 fmgInitCloud();
+
+// Automatically expose business profiles matching by registration text names
+FMG.businessById = function(bizId) {
+  const businesses = this.getBusinesses();
+  const foundBiz = businesses.find(b => b.id === bizId || b.bizId === bizId);
+  return {
+    id: bizId,
+    name: foundBiz ? (foundBiz.name || foundBiz.businessName || "Unnamed Store") : "Loading Store...",
+    location: foundBiz ? (foundBiz.location || "general") : "general"
+  };
+};
