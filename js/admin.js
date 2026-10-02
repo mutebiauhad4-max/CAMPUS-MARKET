@@ -250,52 +250,9 @@ function savePaymentSettings() {
   toast("Payment collection accounts updated.");
 }
 
-/* ---------------- Firebase Data Synchronization ---------------- */
-function fetchFirebaseDataCollections() {
-  if (typeof db !== "undefined") {
-    // 1. Sync products
-    db.collection("fmg_products").onSnapshot((snapshot) => {
-      let productsList = [];
-      snapshot.forEach((doc) => {
-        productsList.push({ id: doc.id, ...doc.data() });
-      });
-      FMG.saveProducts(productsList);
-    });
-
-    // 2. Automated Smart Sorting: Look inside your fmg_users table
-    db.collection("fmg_users").onSnapshot((snapshot) => {
-      let generalUsers = [];
-      let verifiedBusinesses = [];
-
-      snapshot.forEach((doc) => {
-        const userData = { id: doc.id, ...doc.data() };
-        
-        // Checks all possible registration labels to see if they signed up as a seller
-        const isBizAccount = 
-          userData.type === "biz" || 
-          userData.type === "business" ||
-          userData.role === "biz" ||
-          userData.role === "business" ||
-          userData.role === "seller" ||
-          userData.accountType === "business";
-
-        if (isBizAccount) {
-          verifiedBusinesses.push(userData);
-        } else {
-          generalUsers.push(userData);
-        }
-      });
-
-      // Save them cleanly where the sidebar tabs expect them to be
-      FMG.saveUsers(generalUsers);
-      FMG.saveBusinesses(verifiedBusinesses);
-    });
-  }
-}
-
 /* ---------- bootstrap ---------- */
 function bootAdminPanel() {
-  fetchFirebaseDataCollections();
+  renderAdminOverview();
   renderUsersTable();
   renderBusinessesTable();
   renderProductsAdminTable();
