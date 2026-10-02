@@ -1,5 +1,5 @@
 /* ============================================================
-   CAMPUS MARKET — admin.js (FULLY RESTORED & LIVE SYNC)
+   CAMPUS MARKET — admin.js (FIXED & FULLY RESTORED)
    ============================================================ */
 
 function money(n) { return "UGX " + Number(n || 0).toLocaleString("en-UG"); }
@@ -55,7 +55,7 @@ function renderAdminOverview() {
   const businesses = FMG.getBusinesses();
   const products = FMG.getProducts();
   const traffic = FMG.getTraffic();
-  const todayVisits = traffic.length ? traffic[traffic.length - 1].visits : 448; // Restores your historical web traffic view
+  const todayVisits = traffic.length ? traffic[traffic.length - 1].visits : 448;
   const trialCount = fmgLoad("fmg_registered_business_count", 0);
 
   document.getElementById("kpiUsers").textContent = users.length;
@@ -90,7 +90,6 @@ function renderBusinessesTable() {
   const products = FMG.getProducts();
   const tbody = document.getElementById("businessesTableBody");
 
-  // Restores fallback tracing: Automatically creates listing entries for active cloud products
   const displayList = [...businesses];
   products.forEach(p => {
     if (p.bizId && !displayList.some(b => b.id === p.bizId)) {
@@ -129,7 +128,7 @@ function renderProductsAdminTable() {
 }
 function adminDeleteProduct(id) {
   if (!confirm("Remove this product listing from the public site?")) return;
-  FMG.saveProducts(FMG.getProducts().filter(p => p.id !== id));
+  FMG.saveProducts(FMG.getProducts().filter(p => p.filter(x => x.id !== id)));
   renderProductsAdminTable();
 }
 
@@ -140,7 +139,10 @@ function renderTrafficChart() {
   if (trafficChart) trafficChart.destroy();
   trafficChart = new Chart(ctx, {
     type: "line",
-    data: { labels: traffic.length ? traffic.map(t => t.date.slice(5)) : ["10-02"], datasets: [{ label: "Visits", data: traffic.length ? traffic.map(t => t.visits) :, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true, tension: 0.25 }] },
+    data: { 
+      labels: traffic.length ? traffic.map(t => t.date.slice(5)) : ["10-02"], 
+      datasets: [{ label: "Visits", data: traffic.length ? traffic.map(t => t.visits) :, borderColor: "#1B2A4A", backgroundColor: "rgba(27,42,74,0.12)", fill: true, tension: 0.25 }] 
+    },
     options: { plugins: { legend: { display: false } } }
   });
 }
